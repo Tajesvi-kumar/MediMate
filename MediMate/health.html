@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediMate - An intelligent health hub</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #50E3C2;
+            --text-color: #333;
+            --light-gray: #f4f7f9;
+            --border-color: #ddd;
+            --background-color: #ffffff;
+            --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --focus-ring: 0 0 0 3px rgba(74, 144, 226, 0.35);
+        }
+
+        body {
+            font-family: var(--font-family);
+            margin: 0;
+            background-color: var(--light-gray);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        /* Simple dark mode variables */
+        .dark body, .dark {
+            --background-color: #0b1220;
+            --light-gray: #0f172a;
+            --text-color: #e5e7eb;
+            --border-color: #23324d;
+            --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: var(--background-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .brand h1 {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 1.6rem;
+        }
+        .brand small {
+            color: #777;
+        }
+        .nav-links {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .nav-links a {
+            color: var(--text-color);
+            text-decoration: none;
+            padding: 8px 10px;
+            border-radius: 8px;
+        }
+        .nav-links a:hover {
+            background: var(--light-gray);
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .toggle {
+            background: #f1f5f9;
+            border: 1px solid var(--border-color);
+            color: #111827;
+        }
+        .toggle:hover {
+            background: #e5e7eb;
+        }
+
+        .card {
+            background-color: var(--background-color);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--card-shadow);
+        }
+
+        /* Subtle hover lift for cards */
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+            transition: transform 200ms ease, box-shadow 200ms ease;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--light-gray);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 900px) {
+            .grid-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        select, input[type="text"], input[type="number"], input[type="file"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #357ABD;
+        }
+        button:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        .doctor-list .doctor-item, .schedule-list .time-slot {
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .doctor-list .doctor-item:hover, .schedule-list .time-slot:hover {
+            border-color: var(--primary-color);
+            background-color: #e9f2ff;
+        }
+
+        .doctor-list .doctor-item.selected {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .doctor-item h4, .doctor-item p {
+            margin: 0;
+        }
+
+        .schedule-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .schedule-day {
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        .time-slot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+        }
+        
+        .time-slot {
+            text-align: center;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 10px;
+            background: #fff;
+            transition: all 0.2s ease;
+        }
+        .time-slot:hover {
+            border-color: var(--primary-color);
+            background-color: #e9f2ff;
+        }
+
+        #confirmation-message {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e6ffed;
+            border: 1px solid #b7e8c9;
+            color: #2b643f;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 30px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .modal-buttons button {
+            padding: 10px 20px;
+        }
+
+        .modal-buttons .cancel-btn {
+            background-color: #aaa;
+        }
+        .modal-buttons .cancel-btn:hover {
+            background-color: #888;
+        }
+
+        #prescription-list .prescription-item {
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f9f9f9;
+        }
+        
+        .report-analysis-result img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .admin-schedule-grid {
+            margin-top: 20px;
+        }
+
+        .admin-schedule-grid .day-label {
+            font-weight: bold;
+            margin: 20px 0 10px;
+        }
+
+        .admin-schedule-grid .time-slot {
+            background-color: #e6ffed;
+            border: 1px solid #b7e8c9;
+            color: #2b643f;
+            cursor: default;
+        }
+        .admin-schedule-grid .time-slot:hover {
+            border-color: #2b643f;
+        }
+        
+        .admin-schedule-grid .time-slot.unavailable {
+            background-color: #fce8e6;
+            border-color: #f2b9b3;
+            color: #a52714;
+        }
+        
+        /* Nearby Hospitals section */
+        .hospital-list .hospital-item {
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .hospital-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        .hospital-meta {
+            color: #666;
+            font-size: 0.95rem;
+        }
+        .doctor-sublist {
+            margin-top: 10px;
+            padding-left: 10px;
+        }
+        .muted {
+            color: #777;
+            font-size: 0.95rem;
+        }
+        
+        /* Adherence tracker */
+        .tracker-item {
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 10px;
+            background: #fafafa;
+        }
+        .tracker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .day-toggle-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+            gap: 6px;
+        }
+        .day-toggle {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 0;
+            text-align: center;
+            background: #fff;
+            cursor: pointer;
+            user-select: none;
+            font-size: 0.9rem;
+        }
+        .day-toggle.completed {
+            background: #b7e8c9; /* darker than previous */
+            border-color: #2b643f;
+            color: #1f3f2b;
+            font-weight: 700;
+        }
+        .dark .day-toggle.completed {
+            background: #14532d; /* rich dark green */
+            border-color: #22c55e;
+            color: #d1fae5;
+        }
+        .tracker-footer {
+            margin-top: 8px;
+            font-size: 0.95rem;
+            color: #555;
+        }
+        
+        /* Disease Awareness Chat */
+        .chat-box {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            height: 260px;
+            overflow-y: auto;
+            background: #fff;
+        }
+        .chat-message { margin: 8px 0; display: flex; }
+        .chat-message .bubble {
+            padding: 10px 12px;
+            border-radius: 12px;
+            max-width: 80%;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+        }
+        .chat-message.user { justify-content: flex-end; }
+        .chat-message.user .bubble { background: #e9f2ff; border-color: #cfe3ff; }
+        .chat-message.bot .bubble { background: #f8fafc; }
+        .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+        
+        /* OpenStreetMap (Leaflet) */
+        #hospital-map {
+            height: 320px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .leaflet-container {
+            background: var(--background-color);
+        }
+
+        /* Scroll reveal animations */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .reveal { opacity: 0; }
+        .reveal-visible { opacity: 1; animation: fadeUp 400ms ease forwards; }
+        
+        /* Respect users who prefer reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+            .card:hover { transform: none; box-shadow: var(--card-shadow); }
+        }
+        
+        /* Login Page Styles */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+        .login-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+        .login-container.hidden {
+            transform: translateY(-20px);
+        }
+        .login-logo {
+            margin-bottom: 30px;
+        }
+        .login-logo h1 {
+            color: #4A90E2;
+            font-size: 2.5rem;
+            margin: 0;
+            font-weight: 700;
+        }
+        .login-logo p {
+            color: #666;
+            margin: 5px 0 0;
+            font-size: 1.1rem;
+        }
+        .login-form {
+            text-align: left;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            box-sizing: border-box;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #4A90E2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #4A90E2, #357ABD);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 10px;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(74, 144, 226, 0.3);
+        }
+        .login-btn:active {
+            transform: translateY(0);
+        }
+        .login-footer {
+            margin-top: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .login-footer a {
+            color: #4A90E2;
+            text-decoration: none;
+        }
+        .login-footer a:hover {
+            text-decoration: underline;
+        }
+        .error-message {
+            color: #e74c3c;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            display: none;
+        }
+        .success-message {
+            color: #27ae60;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            display: none;
+        }
+        
+    </style>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-container">
+            <div class="login-logo">
+                <h1>MediMate</h1>
+                <p>An intelligent health hub</p>
+            </div>
+            <form class="login-form" id="login-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="login-btn">Sign In</button>
+                <div class="error-message" id="login-error"></div>
+                <div class="success-message" id="login-success"></div>
+            </form>
+            <div class="login-footer">
+                <p>Don't have an account? <a href="#" id="signup-link">Sign up here</a></p>
+                <p><a href="#" id="forgot-password">Forgot your password?</a></p>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <div class="nav">
+            <div class="brand">
+                <svg width="40" height="40" viewBox="0 0 40 40" style="margin-right: 10px;">
+                    <!-- Speech bubble -->
+                    <rect x="2" y="8" width="16" height="12" rx="3" fill="#4A90E2"/>
+                    <polygon points="6,20 8,24 10,20" fill="#4A90E2"/>
+                    
+                    <!-- Heart shape -->
+                    <path d="M12 6 C12 2, 18 2, 18 8 C18 2, 24 2, 24 8 C24 14, 18 20, 18 20 C18 20, 12 14, 12 8 Z" fill="url(#heartGradient)"/>
+                    <defs>
+                        <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#50E3C2;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#2ECC71;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    
+                    <!-- Stethoscope -->
+                    <circle cx="28" cy="12" r="2" fill="#2ECC71"/>
+                    <circle cx="32" cy="12" r="2" fill="#2ECC71"/>
+                    <path d="M28 12 Q30 16 32 12" stroke="#1E3A8A" stroke-width="2" fill="none"/>
+                    <circle cx="30" cy="18" r="3" fill="#1E3A8A"/>
+                    <circle cx="30" cy="18" r="1.5" fill="#4A90E2"/>
+                </svg>
+                <h1>MediMate</h1>
+                <small>An intelligent health hub</small>
+            </div>
+            <nav class="nav-links">
+                <a href="#nearby">Nearby</a>
+                <a href="#appointments">Appointments</a>
+                <a href="#prescriptions">Prescriptions</a>
+                <a href="#reports">Reports</a>
+                <a href="#admin">Admin</a>
+            </nav>
+            <div class="actions">
+                <button id="logout-btn" class="toggle" aria-label="Logout" style="background-color: #e74c3c; color: white;">Logout</button>
+                <button id="dark-mode-toggle" class="toggle" aria-label="Toggle dark mode">Dark mode</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container reveal">
+        <div class="card reveal" id="nearby">
+            <h2>Nearby Hospitals & Doctors</h2>
+            <p>Scan your location to find hospitals around you and view doctors available nearby.</p>
+            <div style="display:flex; gap: 10px; align-items:center; flex-wrap: wrap;">
+                <button id="scan-hospitals-btn">Scan Nearby Hospitals</button>
+                <span id="scan-status" class="muted"></span>
+            </div>
+            <div id="hospital-map" style="margin-top: 12px; height: 320px;"></div>
+            <div id="hospital-results" class="hospital-list" style="margin-top: 15px;"></div>
+        </div>
+        <div class="card reveal" id="appointments">
+            <h2>AI-Driven Appointment Booking</h2>
+            <p>Find a specialist and book your appointment in seconds.</p>
+            <div class="grid-container">
+                <div>
+                    <label for="specialty-select">Filter by Specialty</label>
+                    <select id="specialty-select">
+                        <option value="Cardiology">Cardiology</option>
+                        <option value="Dermatology">Dermatology</option>
+                        <option value="Neurology">Neurology</option>
+                        <option value="Pediatrics">Pediatrics</option>
+                    </select>
+                    <h3 style="margin-top: 20px;">Available Doctors</h3>
+                    <div class="doctor-list" id="doctor-list">
+                        </div>
+                </div>
+                <div>
+                    <h3>Doctor's Schedule</h3>
+                    <div id="doctor-schedule">
+                        <p>Please select a doctor to see their schedule.</p>
+                    </div>
+                </div>
+            </div>
+            <div id="confirmation-message"></div>
+        </div>
+
+        <div class="card reveal" id="appointment-section" style="display:none;">
+            <h2>Your Appointment</h2>
+            <div id="appointment-details">
+                <p class="muted">You don't have any confirmed appointment yet.</p>
+            </div>
+        </div>
+
+        <div class="card reveal" id="prescriptions">
+            <h2>Smart Prescription Management</h2>
+            <p>Track your daily progress and get AI-powered reminders to stay on track.</p>
+            <div class="grid-container">
+                <div>
+                    <h3>Your Medications</h3>
+                    <form id="prescription-form">
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label for="med-name">Medication Name</label>
+                                <input type="text" id="med-name" placeholder="e.g., Amoxicillin">
+                            </div>
+                            <div>
+                                <label for="med-dosage">Dosage</label>
+                                <input type="text" id="med-dosage" placeholder="e.g., 500mg">
+                            </div>
+                            <div>
+                                <label for="med-frequency">Frequency</label>
+                                <input type="text" id="med-frequency" placeholder="e.g., Once a day">
+                            </div>
+                            <div>
+                                <label for="med-duration">Duration (Days)</label>
+                                <input type="number" id="med-duration" placeholder="e.g., 7">
+                            </div>
+                        </div>
+                        <button type="submit" style="margin-top: 20px;">Add Prescription</button>
+                    </form>
+                    <div id="prescription-list"></div>
+                    <div id="adherence-tracker" style="margin-top: 20px;">
+                        <h3 style="margin-top:20px;">Daily Performance Tracker</h3>
+                        <div id="tracker-items"></div>
+                    </div>
+                </div>
+                <div>
+                    <h3>Disease Awareness Chat</h3>
+                    <div class="chat-box" id="awareness-chat"></div>
+                    <div class="chat-input-row">
+                        <input type="text" id="chat-input" placeholder="Ask about symptoms, prevention, or treatments...">
+                        <button id="chat-send">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card reveal" id="reports">
+            <h2>AI Medical Report Analyzer</h2>
+            <p>Paste text or upload an image of a medical document to get an AI-powered summary.</p>
+            <div class="grid-container">
+                <div>
+                    <h3>Input</h3>
+                    <textarea id="report-text" placeholder="Paste medical report text here..."></textarea>
+                    <label style="margin-top: 15px;">Or upload a report image</label>
+                    <input type="file" id="report-image-upload" accept="image/*">
+                    <button style="margin-top: 20px;" id="analyze-report-btn">Analyze Report</button>
+                </div>
+                <div>
+                    <h3>Analysis</h3>
+                    <div id="report-analysis-result">
+                        <p>Analysis results will be shown here.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card reveal" id="admin">
+            <h2>AI-Powered Doctor Schedule (Admin/Doctor's View)</h2>
+            <p>Select a doctor and generate an optimal weekly schedule based on hospital data.</p>
+            <label for="admin-doctor-select">Select Doctor</label>
+            <div style="display:flex; gap: 15px; align-items:center;">
+                <select id="admin-doctor-select" style="flex-grow: 1;">
+                    </select>
+                <button id="generate-schedule-btn">Generate Schedule</button>
+            </div>
+            <div id="admin-schedule-display"></div>
+        </div>
+
+    </div>
+
+    <div id="booking-modal" class="modal">
+        <div class="modal-content">
+            <h3>Confirm Your Appointment</h3>
+            <p id="modal-summary"></p>
+            <form id="booking-form">
+                <div>
+                    <label for="full-name">Full Name</label>
+                    <input type="text" id="full-name" required>
+                </div>
+                <div style="margin-top: 15px;">
+                    <label for="phone-number">Phone Number</label>
+                    <input type="text" id="phone-number" required>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="cancel-btn">Cancel</button>
+                    <button type="submit">Confirm Booking</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer class="container" style="padding-bottom:40px;">
+        <div class="card" style="text-align:center;">
+            <p style="margin:0;">© <span id="year"></span> MediMate • <a href="#appointments">Book</a> • <a href="#prescriptions">Medications</a> • <a href="#reports">Reports</a></p>
+        </div>
+    </footer>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Login functionality
+            const loginOverlay = document.getElementById('login-overlay');
+            const loginForm = document.getElementById('login-form');
+            const loginError = document.getElementById('login-error');
+            const loginSuccess = document.getElementById('login-success');
+            const signupLink = document.getElementById('signup-link');
+            const forgotPassword = document.getElementById('forgot-password');
+
+            // Check if user is already logged in
+            if (localStorage.getItem('aurahealth_logged_in') === 'true') {
+                hideLogin();
+            }
+
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+
+                // Simple validation
+                if (!email || !password) {
+                    showError('Please fill in all fields');
+                    return;
+                }
+
+                // Simulate login process
+                showSuccess('Logging in...');
+                setTimeout(() => {
+                    // For demo purposes, accept any email/password
+                    localStorage.setItem('aurahealth_logged_in', 'true');
+                    localStorage.setItem('aurahealth_user_email', email);
+                    hideLogin();
+                }, 1000);
+            });
+
+            signupLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                showError('Sign up feature coming soon!');
+            });
+
+            forgotPassword.addEventListener('click', function(e) {
+                e.preventDefault();
+                showError('Password reset feature coming soon!');
+            });
+
+            function showError(message) {
+                loginError.textContent = message;
+                loginError.style.display = 'block';
+                loginSuccess.style.display = 'none';
+            }
+
+            function showSuccess(message) {
+                loginSuccess.textContent = message;
+                loginSuccess.style.display = 'block';
+                loginError.style.display = 'none';
+            }
+
+            function hideLogin() {
+                loginOverlay.classList.add('hidden');
+                setTimeout(() => {
+                    loginOverlay.style.display = 'none';
+                }, 500);
+            }
+
+            // Scroll reveal observer
+            const revealEls = document.querySelectorAll('.reveal');
+            if ('IntersectionObserver' in window) {
+                const obs = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('reveal-visible');
+                            // If the map is inside this element, invalidate size after reveal
+                            if (entry.target.querySelector && entry.target.querySelector('#hospital-map') && typeof L !== 'undefined' && window.hospitalMap) {
+                                setTimeout(() => window.hospitalMap.invalidateSize(), 0);
+                            }
+                            obs.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.08 });
+                revealEls.forEach(el => obs.observe(el));
+            } else {
+                revealEls.forEach(el => el.classList.add('reveal-visible'));
+            }
+            // --- Data ---
+            const doctors = {
+                'Cardiology': [
+                    { id: 1, name: 'Dr. Evelyn Reed', schedule: { 'Monday': ['09:00 AM', '11:30 AM'], 'Friday': ['10:00 AM', '01:00 PM', '03:00 PM'] } },
+                    { id: 2, name: 'Dr. Marcus Holloway', schedule: { 'Tuesday': ['10:00 AM', '02:00 PM'], 'Thursday': ['09:00 AM', '11:00 AM'] } }
+                ],
+                'Dermatology': [
+                    { id: 3, name: 'Dr. Sofia Chen', schedule: { 'Monday': ['01:00 PM', '04:00 PM'], 'Wednesday': ['09:00 AM', '12:00 PM'] } }
+                ],
+                'Neurology': [
+                    { id: 4, name: 'Dr. Ben Carter', schedule: { 'Tuesday': ['11:00 AM'], 'Friday': ['02:00 PM', '04:00 PM'] } }
+                ],
+                'Pediatrics': [
+                    { id: 5, name: 'Dr. Aisha Khan', schedule: { 'Monday': ['10:00 AM', '03:00 PM'], 'Wednesday': ['11:00 AM'], 'Friday': ['09:00 AM'] } }
+                ]
+            };
+            
+            let selectedBookingInfo = {};
+
+            // --- Elements ---
+            const specialtySelect = document.getElementById('specialty-select');
+            const doctorList = document.getElementById('doctor-list');
+            const doctorSchedule = document.getElementById('doctor-schedule');
+            const confirmationMessage = document.getElementById('confirmation-message');
+            
+            const bookingModal = document.getElementById('booking-modal');
+            const modalSummary = document.getElementById('modal-summary');
+            const bookingForm = document.getElementById('booking-form');
+            const cancelBtn = document.querySelector('.cancel-btn');
+
+            const prescriptionForm = document.getElementById('prescription-form');
+            const prescriptionList = document.getElementById('prescription-list');
+            const trackerItems = document.getElementById('tracker-items');
+            // Disease awareness chat elements
+            const awarenessChat = document.getElementById('awareness-chat');
+            const chatInput = document.getElementById('chat-input');
+            const chatSend = document.getElementById('chat-send');
+            
+            const analyzeReportBtn = document.getElementById('analyze-report-btn');
+            const reportImageUpload = document.getElementById('report-image-upload');
+            const reportAnalysisResult = document.getElementById('report-analysis-result');
+
+            const adminDoctorSelect = document.getElementById('admin-doctor-select');
+            const generateAdminScheduleBtn = document.getElementById('generate-schedule-btn');
+            const adminScheduleDisplay = document.getElementById('admin-schedule-display');
+
+            // Nearby Hospitals elements
+            const scanHospitalsBtn = document.getElementById('scan-hospitals-btn');
+            const scanStatus = document.getElementById('scan-status');
+            const hospitalResults = document.getElementById('hospital-results');
+            const hospitalMapEl = document.getElementById('hospital-map');
+            let hospitalMap = null;
+            let hospitalMarkers = [];
+
+            // Dark mode toggle
+            const darkToggle = document.getElementById('dark-mode-toggle');
+            darkToggle.addEventListener('click', () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                darkToggle.textContent = isDark ? 'Light mode' : 'Dark mode';
+            });
+
+            // Logout functionality
+            const logoutBtn = document.getElementById('logout-btn');
+            logoutBtn.addEventListener('click', () => {
+                // Clear localStorage
+                localStorage.removeItem('aurahealth_logged_in');
+                localStorage.removeItem('aurahealth_user_email');
+                
+                // Show login overlay
+                const loginOverlay = document.getElementById('login-overlay');
+                loginOverlay.style.display = 'flex';
+                loginOverlay.classList.remove('hidden');
+                
+                // Reset login form
+                document.getElementById('login-form').reset();
+                document.getElementById('login-error').style.display = 'none';
+                document.getElementById('login-success').style.display = 'none';
+            });
+
+            // --- Appointment Booking Logic ---
+
+            function populateDoctors(specialty) {
+                doctorList.innerHTML = '';
+                doctorSchedule.innerHTML = '<p>Please select a doctor to see their schedule.</p>';
+                const doctorsInSpecialty = doctors[specialty] || [];
+                
+                doctorsInSpecialty.forEach(doc => {
+                    const docItem = document.createElement('div');
+                    docItem.className = 'doctor-item';
+                    docItem.dataset.id = doc.id;
+                    docItem.dataset.specialty = specialty;
+                    docItem.innerHTML = `<h4>${doc.name}</h4><p>${specialty}</p>`;
+                    docItem.addEventListener('click', () => selectDoctor(docItem, doc));
+                    doctorList.appendChild(docItem);
+                });
+            }
+
+            function selectDoctor(element, doctor) {
+                // Deselect others
+                document.querySelectorAll('.doctor-item').forEach(item => item.classList.remove('selected'));
+                // Select clicked one
+                element.classList.add('selected');
+                displaySchedule(doctor);
+            }
+            
+            function displaySchedule(doctor) {
+                doctorSchedule.innerHTML = `<h4>Dr. ${doctor.name}'s Schedule</h4>`;
+                if (Object.keys(doctor.schedule).length === 0) {
+                    doctorSchedule.innerHTML += '<p>No available slots.</p>';
+                    return;
+                }
+                
+                Object.keys(doctor.schedule).forEach(day => {
+                    doctorSchedule.innerHTML += `<div class="schedule-day">${day}</div>`;
+                    const timeGrid = document.createElement('div');
+                    timeGrid.className = 'time-slot-grid';
+                    
+                    doctor.schedule[day].forEach(time => {
+                        const timeSlot = document.createElement('div');
+                        timeSlot.className = 'time-slot';
+                        timeSlot.innerText = time;
+                        timeSlot.addEventListener('click', () => openBookingModal(doctor, day, time));
+                        timeGrid.appendChild(timeSlot);
+                    });
+                    doctorSchedule.appendChild(timeGrid);
+                });
+            }
+            
+            function openBookingModal(doctor, day, time) {
+                selectedBookingInfo = { doctor, day, time };
+                modalSummary.innerText = `You are booking with ${doctor.name} on ${day} at ${time}.`;
+                bookingModal.style.display = 'flex';
+            }
+            
+            function closeModal() {
+                bookingModal.style.display = 'none';
+                bookingForm.reset();
+            }
+
+            specialtySelect.addEventListener('change', () => populateDoctors(specialtySelect.value));
+            
+            bookingForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('full-name').value;
+                const token = Math.random().toString(36).substring(2, 6).toUpperCase();
+                
+                confirmationMessage.innerHTML = `<strong>Success!</strong> Appointment Confirmed for <strong>${name}</strong> with ${selectedBookingInfo.doctor.name} on ${selectedBookingInfo.day}. Your Token is <strong>#${token}</strong>`;
+                confirmationMessage.style.display = 'block';
+                
+                // Reveal and populate the appointment section
+                const apptSection = document.getElementById('appointment-section');
+                const apptDetails = document.getElementById('appointment-details');
+                const apptHtml = `
+                    <p><strong>Name:</strong> ${escapeHtml(name)}</p>
+                    <p><strong>Doctor:</strong> ${escapeHtml(selectedBookingInfo.doctor.name)}</p>
+                    <p><strong>Day:</strong> ${escapeHtml(selectedBookingInfo.day)}</p>
+                    <p><strong>Time:</strong> ${escapeHtml(selectedBookingInfo.time)}</p>
+                    <p><strong>Token:</strong> #${escapeHtml(token)}</p>
+                `;
+                apptDetails.innerHTML = apptHtml;
+                apptSection.style.display = 'block';
+                
+                closeModal();
+            });
+
+            cancelBtn.addEventListener('click', closeModal);
+            window.addEventListener('click', (event) => {
+                if (event.target == bookingModal) {
+                    closeModal();
+                }
+            });
+
+
+            // --- Prescription Management Logic ---
+            prescriptionForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const medName = document.getElementById('med-name').value;
+                const dosage = document.getElementById('med-dosage').value;
+                const frequency = document.getElementById('med-frequency').value;
+                const duration = document.getElementById('med-duration').value;
+
+                if (!medName || !dosage || !frequency || !duration) {
+                    alert('Please fill all medication fields.');
+                    return;
+                }
+
+                const item = document.createElement('div');
+                item.className = 'prescription-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${medName} (${dosage})</strong><br>
+                        <small>${frequency} - ${duration} Days</small>
+                    </div>
+                    <span>✅</span>
+                `;
+                prescriptionList.appendChild(item);
+                prescriptionForm.reset();
+
+                // Add tracker row for this medication with days equal to Duration
+                const durationDays = Number(duration) || 7;
+                addTrackerItem(`${medName} (${dosage})`, frequency, durationDays);
+            });
+
+            function addTrackerItem(label, freq, numDays) {
+                const tracker = document.createElement('div');
+                tracker.className = 'tracker-item';
+                const id = Math.random().toString(36).slice(2);
+                tracker.innerHTML = `
+                    <div class="tracker-header">
+                        <strong>${escapeHtml(label)}</strong>
+                        <span class="muted">${escapeHtml(freq || '')}</span>
+                    </div>
+                    <div class="day-toggle-group" data-id="${id}"></div>
+                    <div class="tracker-footer" id="progress-${id}">Completion: 0%</div>
+                `;
+                trackerItems.appendChild(tracker);
+                buildDayToggles(tracker.querySelector('.day-toggle-group'), id, numDays);
+                attachToggleHandlers(tracker, id);
+            }
+
+            function buildDayToggles(container, id, numDays) {
+                const days = Math.max(1, Math.min(Number(numDays) || 7, 60));
+                container.innerHTML = '';
+                for (let i = 1; i <= days; i++) {
+                    const d = document.createElement('div');
+                    d.className = 'day-toggle';
+                    d.setAttribute('data-day', `Day ${i}`);
+                    d.textContent = `D${i}`;
+                    container.appendChild(d);
+                }
+            }
+
+            function attachToggleHandlers(root, id) {
+                const toggles = root.querySelectorAll('.day-toggle');
+                const progress = root.querySelector(`#progress-${id}`);
+                toggles.forEach(t => {
+                    t.addEventListener('click', () => {
+                        t.classList.toggle('completed');
+                        updateProgress();
+                    });
+                });
+                function updateProgress() {
+                    const total = toggles.length;
+                    const done = Array.from(toggles).filter(x => x.classList.contains('completed')).length;
+                    const pct = Math.round((done / total) * 100);
+                    progress.textContent = `Completion: ${pct}%`;
+                }
+            }
+
+            function appendMessage(who, text) {
+                const row = document.createElement('div');
+                row.className = `chat-message ${who}`;
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.textContent = text;
+                row.appendChild(bubble);
+                awarenessChat.appendChild(row);
+                awarenessChat.scrollTop = awarenessChat.scrollHeight;
+            }
+
+            function botReply(input) {
+                const q = input.toLowerCase();
+                if (q.includes('covid') || q.includes('fever') || q.includes('cough')) {
+                    return 'Fever and cough can be caused by many illnesses, including COVID‑19 and flu. Stay hydrated, rest, and consider testing. Seek urgent care if you have trouble breathing, chest pain, confusion, or bluish lips/face.';
+                }
+                if (q.includes('diabetes') || q.includes('sugar')) {
+                    return 'Diabetes awareness: monitor blood glucose, maintain balanced meals with fiber, exercise regularly, and follow your medication plan. Watch for symptoms like excessive thirst, frequent urination, and fatigue.';
+                }
+                if (q.includes('heart') || q.includes('bp') || q.includes('hypertension')) {
+                    return 'Heart health: reduce sodium, avoid smoking, manage stress, and exercise 150 minutes per week. For hypertension, track blood pressure and follow your doctor’s medication guidance.';
+                }
+                if (q.includes('asthma') || q.includes('wheez')) {
+                    return 'Asthma tips: carry your reliever inhaler, avoid triggers (smoke, dust, pollen), and use a spacer if recommended. Seek help if you have severe breathlessness or lips turning blue.';
+                }
+                if (q.includes('cancer') || q.includes('screening')) {
+                    return 'Cancer awareness: early detection saves lives. Follow age-appropriate screenings (mammogram, Pap smear, colonoscopy) and report warning signs like unexplained weight loss or persistent lumps.';
+                }
+                if (q.includes('prevention') || q.includes('diet')) {
+                    return 'General prevention: balanced diet (fruits/vegetables/whole grains), regular exercise, adequate sleep, vaccinations as advised, and routine checkups. Limit ultra-processed foods and sugary drinks.';
+                }
+                return 'I can share general awareness on symptoms, prevention, and screenings. For emergencies, call your local emergency number. What topic would you like to know about (e.g., diabetes, asthma, heart health)?';
+            }
+
+            function sendChat() {
+                const text = (chatInput.value || '').trim();
+                if (!text) return;
+                appendMessage('user', text);
+                chatInput.value = '';
+                setTimeout(() => appendMessage('bot', botReply(text)), 200);
+            }
+
+            chatSend.addEventListener('click', sendChat);
+            chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+            // Seed a welcome message
+            appendMessage('bot', 'Hi! Ask me about disease symptoms, prevention tips, or screenings.');
+
+            // --- Report Analyzer Logic ---
+            analyzeReportBtn.addEventListener('click', () => {
+                const hasImage = reportImageUpload.files.length > 0;
+                let content = ``;
+
+                if(hasImage) {
+                    const reader = new FileReader();
+                    reader.onload = function(e){
+                        const imageHtml = `<img src="${e.target.result}" alt="Uploaded X-Ray">`;
+                        reportAnalysisResult.innerHTML = imageHtml + generateAnalysisText();
+                    }
+                    reader.readAsDataURL(reportImageUpload.files[0]);
+                } else {
+                     reportAnalysisResult.innerHTML = generateAnalysisText();
+                }
+            });
+
+            function generateAnalysisText() {
+                return `
+                    <p>The image shows two X-rays of a 40-year old female's elbow (unspecified side) in AP and Lateral views. The X-rays were taken on 26/04/2025.</p>
+                    <h4>Key Findings</h4>
+                    <p>The image quality is sufficient for visual assessment. However, without a radiologist's interpretation, specific findings about bone structure, alignment, and possible pathology cannot be provided. The images appear to show a normal elbow joint but further evaluation from a medical professional is required.</p>
+                    <h4>Diagnosis</h4>
+                    <p>No diagnoses are explicitly mentioned in the provided information.</p>
+                `;
+            }
+            
+            // --- Nearby Hospitals & Doctors (Geolocation + Overpass API) ---
+            const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+            
+            function setScanStatus(text) {
+                scanStatus.innerText = text || '';
+            }
+            
+            function toRadians(deg) { return deg * Math.PI / 180; }
+            function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+                const R = 6371; // km
+                const dLat = toRadians(lat2 - lat1);
+                const dLon = toRadians(lon2 - lon1);
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+            
+            async function fetchOverpass(query) {
+                const response = await fetch(OVERPASS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: `data=${encodeURIComponent(query)}`
+                });
+                if (!response.ok) throw new Error('Overpass API error');
+                return response.json();
+            }
+            
+            function extractCenter(element) {
+                if (element.type === 'node') return { lat: element.lat, lon: element.lon };
+                if (element.center) return { lat: element.center.lat, lon: element.center.lon };
+                return null;
+            }
+            
+            async function findNearbyHospitals(lat, lon) {
+                const radiusMeters = 5000; // 5km
+                const query = `
+                    [out:json][timeout:25];
+                    (
+                      node["amenity"="hospital"](around:${radiusMeters},${lat},${lon});
+                      way["amenity"="hospital"](around:${radiusMeters},${lat},${lon});
+                      relation["amenity"="hospital"](around:${radiusMeters},${lat},${lon});
+                    );
+                    out center tags;`;
+                const data = await fetchOverpass(query);
+                const hospitals = (data.elements || [])
+                    .map(el => {
+                        const center = extractCenter(el);
+                        if (!center) return null;
+                        const distanceKm = haversineDistanceKm(lat, lon, center.lat, center.lon);
+                        return {
+                            id: `${el.type}/${el.id}`,
+                            name: el.tags && (el.tags.name || el.tags["name:en"]) || 'Unnamed Hospital',
+                            address: buildAddress(el.tags || {}),
+                            lat: center.lat,
+                            lon: center.lon,
+                            distanceKm
+                        };
+                    })
+                    .filter(Boolean)
+                    .sort((a, b) => a.distanceKm - b.distanceKm)
+                    .slice(0, 15);
+                return hospitals;
+            }
+            
+            function buildAddress(tags) {
+                const parts = [
+                    tags["addr:housenumber"],
+                    tags["addr:street"],
+                    tags["addr:suburb"],
+                    tags["addr:city"],
+                    tags["addr:state"],
+                    tags["addr:postcode"],
+                    tags["addr:country"]
+                ].filter(Boolean);
+                return parts.join(', ');
+            }
+            
+            function renderHospitalList(hospitals, userLat, userLon) {
+                if (!hospitals.length) {
+                    hospitalResults.innerHTML = '<p class="muted">No hospitals found nearby.</p>';
+                    return;
+                }
+                const container = document.createElement('div');
+                hospitals.forEach(h => {
+                    const item = document.createElement('div');
+                    item.className = 'hospital-item';
+                    const distanceText = `${h.distanceKm.toFixed(2)} km`;
+                    item.innerHTML = `
+                        <div class="hospital-header">
+                            <div>
+                                <strong>${h.name}</strong>
+                                <div class="hospital-meta">${h.address || 'Address unavailable'} • ${distanceText}</div>
+                            </div>
+                            <button data-hospital-id="${h.id}" class="view-doctors-btn">View Doctors Nearby</button>
+                        </div>
+                        <div class="doctor-sublist" id="doctors-${cssEscapeId(h.id)}" style="display:none;"></div>
+                    `;
+                    container.appendChild(item);
+                });
+                hospitalResults.innerHTML = '';
+                hospitalResults.appendChild(container);
+                hospitalResults.querySelectorAll('.view-doctors-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const hospitalId = e.currentTarget.getAttribute('data-hospital-id');
+                        const hospital = hospitals.find(x => x.id === hospitalId);
+                        const target = document.getElementById(`doctors-${cssEscapeId(hospitalId)}`);
+                        if (!target) return;
+                        if (target.dataset.loaded === 'true') {
+                            target.style.display = target.style.display === 'none' ? 'block' : 'none';
+                            return;
+                        }
+                        e.currentTarget.disabled = true;
+                        e.currentTarget.innerText = 'Loading...';
+                        try {
+                            const doctors = await findDoctorsNear(hospital.lat, hospital.lon);
+                            renderDoctorsList(target, doctors);
+                            target.dataset.loaded = 'true';
+                            target.style.display = 'block';
+                        } catch (err) {
+                            target.innerHTML = '<p class="muted">Failed to load nearby doctors.</p>';
+                            target.style.display = 'block';
+                        } finally {
+                            e.currentTarget.disabled = false;
+                            e.currentTarget.innerText = 'View Doctors Nearby';
+                        }
+                    });
+                });
+            }
+            
+            function cssEscapeId(id) {
+                return id.replace(/[^a-zA-Z0-9_-]/g, '_');
+            }
+            
+            async function findDoctorsNear(lat, lon) {
+                const radiusMeters = 400; // within ~400m of hospital center
+                const query = `
+                    [out:json][timeout:25];
+                    (
+                      node["amenity"="doctors"](around:${radiusMeters},${lat},${lon});
+                      way["amenity"="doctors"](around:${radiusMeters},${lat},${lon});
+                    );
+                    out center tags;`;
+                const data = await fetchOverpass(query);
+                const realDoctors = (data.elements || []).map(el => {
+                    const center = extractCenter(el) || { lat, lon };
+                    const name = (el.tags && (el.tags.name || el.tags["name:en"])) || 'Doctor';
+                    const spec = el.tags && (el.tags["medical:specialty"] || el.tags.specialty);
+                    return {
+                        id: `${el.type}/${el.id}`,
+                        name,
+                        specialty: spec || 'General practice',
+                        address: buildAddress(el.tags || {}),
+                        lat: center.lat,
+                        lon: center.lon
+                    };
+                });
+                // Always add a few random doctors so each hospital shows options
+                const randomCount = Math.max(2, 6 - realDoctors.length);
+                const randomDoctors = generateRandomDoctors(lat, lon, randomCount);
+                return [...realDoctors, ...randomDoctors];
+            }
+            
+            function renderDoctorsList(container, doctors) {
+                if (!doctors.length) {
+                    container.innerHTML = '<p class="muted">No doctor data found near this hospital.</p>';
+                    return;
+                }
+                const list = document.createElement('div');
+                doctors.forEach(d => {
+                    const row = document.createElement('div');
+                    row.className = 'doctor-item';
+                    row.innerHTML = `
+                        <div class="hospital-header">
+                            <div>
+                                <h4 style="margin:0;">${d.name}</h4>
+                                <p style="margin:4px 0 0;">${d.specialty}</p>
+                                <div class="hospital-meta">${d.address || ''}</div>
+                            </div>
+                            <button class="add-to-appointments-btn" data-doc-name="${escapeHtml(d.name)}" data-doc-specialty="${escapeHtml(d.specialty)}">Add for Appointment</button>
+                        </div>
+                    `;
+                    list.appendChild(row);
+                });
+                container.innerHTML = '';
+                container.appendChild(list);
+                container.querySelectorAll('.add-to-appointments-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const name = e.currentTarget.getAttribute('data-doc-name');
+                        const specialty = e.currentTarget.getAttribute('data-doc-specialty') || 'General practice';
+                        addDoctorToAppointments(name, specialty);
+                    });
+                });
+            }
+
+            // --- Random doctor generator for enrichment/fallback ---
+            const RANDOM_FIRST_NAMES = ['Aisha','Ben','Carlos','Diana','Evelyn','Farah','Gautam','Hannah','Ibrahim','Jia','Karan','Layla','Mateo','Noah','Olivia','Priya','Quinn','Ravi','Sofia','Tariq','Uma','Victor','Willow','Xin','Yara','Zara'];
+            const RANDOM_LAST_NAMES = ['Khan','Carter','Silva','Patel','Nguyen','Hernandez','Garcia','Singh','Brown','Wilson','Martinez','Chen','Dubois','Ivanov','Kim','Lopez','Mori','Nakamura','Olsen','Perez','Quintero','Rahman','Sato','Thompson','Usman','Vega','Wong','Xu','Young','Zhang'];
+            const RANDOM_SPECIALTIES = ['Cardiology','Dermatology','Neurology','Pediatrics','Orthopedics','General practice','ENT','Ophthalmology','Oncology','Gynecology','Psychiatry','Endocrinology'];
+            
+            function getRandomInt(min, max) {
+                return Math.floor(Math.random() * (max - min + 1)) - 0 + min;
+            }
+            
+            function pickRandom(arr) {
+                return arr[Math.floor(Math.random() * arr.length)];
+            }
+            
+            function generateRandomDoctors(lat, lon, count) {
+                const result = [];
+                const num = Math.max(1, Math.min(count || 3, 8));
+                for (let i = 0; i < num; i++) {
+                    const first = pickRandom(RANDOM_FIRST_NAMES);
+                    const last = pickRandom(RANDOM_LAST_NAMES);
+                    const specialty = pickRandom(RANDOM_SPECIALTIES);
+                    result.push({
+                        id: `rand-${Date.now()}-${i}-${Math.floor(Math.random()*1000)}`,
+                        name: `Dr. ${first} ${last}`,
+                        specialty,
+                        address: '',
+                        lat,
+                        lon
+                    });
+                }
+                return result;
+            }
+
+            function escapeHtml(str) {
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function ensureSpecialtyOption(specialty) {
+                const exists = Array.from(specialtySelect.options).some(o => o.value === specialty);
+                if (!exists) {
+                    const opt = document.createElement('option');
+                    opt.value = specialty;
+                    opt.text = specialty;
+                    specialtySelect.appendChild(opt);
+                }
+            }
+
+            function generateRandomSchedule() {
+                const possibleDays = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+                const possibleTimes = ['09:00 AM','09:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','02:00 PM','02:30 PM','03:00 PM','03:30 PM','04:00 PM'];
+                const schedule = {};
+                possibleDays.forEach(day => {
+                    if (Math.random() > 0.4) {
+                        const slots = [];
+                        const count = 1 + Math.floor(Math.random()*3);
+                        for (let i = 0; i < count; i++) {
+                            slots.push(pickRandom(possibleTimes));
+                        }
+                        schedule[day] = Array.from(new Set(slots)).sort((a,b) => new Date('1970/01/01 '+a) - new Date('1970/01/01 '+b));
+                    }
+                });
+                // Ensure at least one day
+                if (Object.keys(schedule).length === 0) {
+                    schedule['Wednesday'] = ['11:00 AM','02:30 PM'];
+                }
+                return schedule;
+            }
+
+            function addDoctorToAppointments(name, specialty) {
+                ensureSpecialtyOption(specialty);
+                if (!doctors[specialty]) doctors[specialty] = [];
+                const newId = Math.floor(Date.now() + Math.random()*10000);
+                const schedule = generateRandomSchedule();
+                const newDoctor = { id: newId, name, schedule };
+                doctors[specialty].push(newDoctor);
+                specialtySelect.value = specialty;
+                populateDoctors(specialty);
+                // auto-select the newly added doctor
+                const el = Array.from(document.querySelectorAll('.doctor-item')).find(x => x.dataset && Number(x.dataset.id) === newId);
+                if (el) {
+                    el.click();
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+            
+            function getCurrentPositionAsync(options) {
+                return new Promise((resolve, reject) => {
+                    if (!navigator.geolocation) {
+                        reject(new Error('Geolocation not supported'));
+                        return;
+                    }
+                    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+                });
+            }
+            
+            scanHospitalsBtn.addEventListener('click', async () => {
+                setScanStatus('Requesting your location...');
+                hospitalResults.innerHTML = '';
+                try {
+                    const pos = await getCurrentPositionAsync({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+                    const { latitude, longitude } = pos.coords;
+                    setScanStatus('Searching for hospitals near you...');
+                    const hospitals = await findNearbyHospitals(latitude, longitude);
+                    setScanStatus(`Found ${hospitals.length} hospital(s) within 5 km.`);
+                    renderHospitalList(hospitals, latitude, longitude);
+                    try { renderHospitalMap(hospitals, latitude, longitude); } catch (_) {}
+                } catch (err) {
+                    setScanStatus('Unable to get location or fetch hospitals. You can still view the map.');
+                    // Initialize map with a reasonable default view
+                    try { renderHospitalMap([], 20, 0); } catch (_) {}
+                }
+            });
+            
+            function renderHospitalMap(hospitals, userLat, userLon) {
+                if (!hospitalMapEl) return;
+                if (!hospitalMap) {
+                    // ensure container is visible and has height
+                    hospitalMapEl.style.display = 'block';
+                    if (!hospitalMapEl.style.height) hospitalMapEl.style.height = '320px';
+                    hospitalMap = L.map(hospitalMapEl).setView([userLat, userLon], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(hospitalMap);
+                    window.hospitalMap = hospitalMap;
+                    setTimeout(() => hospitalMap.invalidateSize(), 0);
+                    window.addEventListener('resize', () => setTimeout(() => hospitalMap && hospitalMap.invalidateSize(), 0));
+                }
+                // Clear previous markers
+                hospitalMarkers.forEach(m => hospitalMap.removeLayer(m));
+                hospitalMarkers = [];
+                const bounds = L.latLngBounds([ [userLat, userLon] ]);
+                // User marker (distinct color)
+                const userMarker = L.circleMarker([userLat, userLon], {
+                    radius: 8,
+                    color: '#ff3b30',
+                    fillColor: '#ff3b30',
+                    fillOpacity: 0.9,
+                    weight: 2,
+                    title: 'You are here'
+                }).addTo(hospitalMap);
+                userMarker.bindPopup('<strong>You are here</strong>');
+                hospitalMarkers.push(userMarker);
+                // Hospital markers
+                hospitals.forEach(h => {
+                    const marker = L.marker([h.lat, h.lon], { title: h.name }).addTo(hospitalMap);
+                    marker.bindPopup(`<strong>${escapeHtml(h.name)}</strong><br>${escapeHtml(h.address || '')}`);
+                    hospitalMarkers.push(marker);
+                    bounds.extend([h.lat, h.lon]);
+                });
+                if (bounds.isValid()) {
+                    hospitalMap.fitBounds(bounds.pad(0.2));
+                } else {
+                    hospitalMap.setView([userLat, userLon], 12);
+                }
+                setTimeout(() => hospitalMap.invalidateSize(), 0);
+            }
+            
+            
+            
+            // --- Admin Schedule Logic ---
+            function populateAdminDoctorSelect() {
+                const allDoctors = Object.values(doctors).flat();
+                allDoctors.forEach(doc => {
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.innerText = `${doc.name} - ${getKeyByValue(doctors, doc)}`;
+                    adminDoctorSelect.appendChild(option);
+                });
+            }
+            
+            function getKeyByValue(object, doctor) {
+                return Object.keys(object).find(key => object[key].includes(doctor));
+            }
+
+            generateAdminScheduleBtn.addEventListener('click', () => {
+                const doctorName = adminDoctorSelect.options[adminDoctorSelect.selectedIndex].text.split(' - ')[0];
+                const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                const times = ['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM'];
+
+                let html = `<h4>Generated Schedule for ${doctorName}</h4>`;
+                days.forEach(day => {
+                    html += `<div class="day-label">${day}</div><div class="time-slot-grid">`;
+                    times.forEach(time => {
+                        // Randomly make some slots available
+                        const isAvailable = Math.random() > 0.4;
+                        html += `<div class="time-slot ${isAvailable ? '' : 'unavailable'}">${time}</div>`;
+                    });
+                    html += `</div>`;
+                });
+                adminScheduleDisplay.innerHTML = html;
+            });
+            
+            // --- Initializations ---
+            populateDoctors(specialtySelect.value);
+            populateAdminDoctorSelect();
+            document.getElementById('year').textContent = new Date().getFullYear();
+        });
+    </script>
+
+</body>
+</html>

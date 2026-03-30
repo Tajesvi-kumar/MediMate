@@ -1,0 +1,698 @@
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraHealth AI Dashboard</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    
+    <style>
+        /* --- General and Header Styles --- */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
+        .app-header { background-color: #fff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #007bff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .logo h1 { color: #007bff; margin: 0; font-size: 24px; }
+        .logo p { margin: 0; font-size: 12px; color: #666; }
+        .logout-button { background-color: #dc3545; color: white; border: none; padding: 8px 15px; cursor: pointer; border-radius: 4px; transition: background-color 0.2s; }
+        .logout-button:hover { background-color: #c82333; }
+        .main-content { padding: 40px 20px; display: flex; justify-content: center; }
+
+        /* --- Login Styles (No Change) --- */
+        .login-page { width: 100%; max-width: 400px; }
+        .login-box { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        .form-group input, .filter-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background-color 0.2s; }
+        button:hover { background-color: #0056b3; }
+        .login-button { margin-top: 15px; width: 100%; }
+
+        /* --- Dashboard Styles --- */
+        .full-dashboard { width: 100%; max-width: 1200px; background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        .tab-navigation { border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; display: flex; }
+        .tab-navigation button { background: none; border: none; padding: 10px 15px; cursor: pointer; font-size: 16px; color: #555; border-bottom: 3px solid transparent; margin-right: 5px; }
+        .tab-navigation button.active-tab { color: #007bff; border-bottom: 3px solid #007bff; font-weight: bold; }
+        .section-container { text-align: left; }
+        .section-container h3 { color: #007bff; margin-top: 0; }
+        
+        /* Hospital/Appointment Section */
+        /* This container makes Map and Hospital List display side-by-side */
+        .main-flex-container { display: flex; gap: 20px; }
+        
+        /* Map Panel Container */
+        .map-panel { 
+            flex: 2; /* Map takes more space */
+            height: 500px; /* **CRITICAL: Explicit height for the map container** */
+            border-radius: 8px; 
+            overflow: hidden; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+        }
+        
+        /* Map Element */
+        #map { 
+            height: 100%; 
+            min-height: 450px; 
+            z-index: 1;
+        } 
+        
+        /* Hospital/Doctor List Panel */
+        .hospital-doctor-panel { flex: 1.5; display: flex; flex-direction: column; gap: 15px; }
+        .hospital-list, .doctor-list { background-color: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #eee; }
+        .hospital-item, .doctor-item { padding: 12px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
+        .hospital-item:hover, .doctor-item:hover { background-color: #e9e9e9; }
+        .hospital-item.selected, .doctor-item.selected { background-color: #007bff; color: white; border-color: #007bff; }
+        .hospital-item p, .doctor-item p { margin: 0; font-size: 0.9em; }
+        
+        /* Schedule/Doctor Details */
+        .doctor-schedule-panel { flex: 1.5; border: 1px solid #eee; padding: 15px; border-radius: 6px; background-color: #fff; }
+        .schedule-day { margin-bottom: 15px; padding: 10px; border-bottom: 1px dotted #ccc; }
+        .schedule-day strong { display: block; margin-bottom: 5px; }
+        .time-slots { display: flex; flex-wrap: wrap; gap: 8px; }
+        .time-slot-button { background-color: #28a745; padding: 8px 12px; font-size: 14px; }
+        .time-slot-button:hover { background-color: #1e7e34; }
+        .specialty-tag { display: inline-block; background-color: #ffc107; color: #343a40; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; margin-top: 5px; }
+
+        /* Modal Styles (No Change) */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .confirm-modal { background: white; padding: 30px; border-radius: 8px; width: 400px; box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4); text-align: left; }
+        .confirm-modal p { margin-bottom: 20px; font-size: 1.1em; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .cancel-button { background-color: #6c757d; }
+        .cancel-button:hover { background-color: #5a6268; }
+
+        /* Report Analyzer Styles & Smart Prescription Styles (No Change) */
+        .analyzer-flex { display: flex; gap: 20px; }
+        .analyzer-flex textarea { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+        .analysis-result { flex: 1; border: 1px solid #ddd; padding: 15px; border-radius: 6px; background-color: #fff; box-shadow: inset 0 0 5px rgba(0,0,0,0.05); }
+        .analysis-result strong { color: #007bff; display: block; margin-bottom: 10px; }
+        .adherence-plan { border: 1px solid #007bff; padding: 15px; border-radius: 6px; background-color: #e8f5ff; }
+        .adherence-plan strong { color: #0056b3; }
+        .medication-entry { margin-bottom: 15px; padding: 10px; border-bottom: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20n6aRzJk+NowxT3zQ4A7qYkQ9mfdg8fLd/9o+E9tKx3w="
+     crossorigin=""></script>
+     
+     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+    <script>
+        // --- MOCK DATA FOR MAP AND DOCTORS ---
+        const USER_LOCATION = { lat: 12.9716, lon: 77.5946, name: "Your Current Location (Bengaluru, India)" }; 
+        const MOCK_HOSPITALS = [
+            { id: 101, name: "City General Hospital", lat: 12.9750, lon: 77.5980, address: "MG Road, Bengaluru",
+                doctors: [
+                    { id: 1, name: "Dr. Evelyn Reed", specialty: "Cardiology Specialist", schedule: { Monday: ['09:00 AM', '10:00 AM'], Friday: ['01:00 PM', '03:00 PM'] } },
+                    { id: 5, name: "Dr. Ankit Verma", specialty: "Pediatrics", schedule: { Tuesday: ['10:00 AM', '11:00 AM'] } }
+                ]
+            },
+            { id: 102, name: "Aura Dental Clinic", lat: 12.9700, lon: 77.5900, address: "Jayanagar, Bengaluru",
+                doctors: [
+                    { id: 3, name: "Dr. Priya Sharma", specialty: "Dentist", schedule: { Thursday: ['09:30 AM', '11:00 AM'] } }
+                ]
+            },
+            { id: 103, name: "Neuro Care Center", lat: 12.9800, lon: 77.6000, address: "Indiranagar, Bengaluru",
+                doctors: [
+                    { id: 4, name: "Dr. Aman Singh", specialty: "Neurology Specialist", schedule: { Monday: ['11:00 AM'], Wednesday: ['02:00 PM'] } },
+                    { id: 6, name: "Dr. Zoya Khan", specialty: "General Physician", schedule: { Friday: ['10:00 AM'] } }
+                ]
+            }
+        ];
+        
+        // --- Global State Management (React-style) ---
+        let state = {
+            isLoggedIn: false,
+            activeTab: 'map_appointment',
+            nearbyHospitals: MOCK_HOSPITALS,
+            selectedHospital: MOCK_HOSPITALS[0] || null,
+            selectedDoctor: null,
+            isConfirming: false,
+            bookingDetails: { doctor: null, day: '', time: '', hospital: null, name: '', phone: '' },
+            loginError: '',
+            medications: [
+                { name: 'Lisinopril', dosage: '10mg', frequency: 'Once a day', duration: '30 Days' },
+                { name: 'Cetirizine', dosage: '500', frequency: 'Twice a day', duration: '7 Days' }
+            ],
+            reportText: "Patient is a 60-year-old male. X-ray of the left knee shows signs of mild osteoarthritis in the medial compartment. No acute fracture or dislocation seen. Recommend follow-up with orthopedic specialist.",
+            analysisResult: ""
+        };
+
+        let mapInstance = null; // Variable to hold the Leaflet map object
+
+        // Rerender function
+        function render() {
+            const root = document.getElementById('root');
+            root.innerHTML = ''; // Clear existing content
+            root.appendChild(App());
+            
+            // Re-initialize map if on the map tab
+            if (state.isLoggedIn && state.activeTab === 'map_appointment') {
+                // Ensure map initializes after the DOM has been fully rendered and sized
+                // We use requestAnimationFrame and a fallback retry loop
+                window.requestAnimationFrame(() => {
+                    initializeMap();
+                });
+            } else {
+                // Destroy map instance if we navigate away
+                if (mapInstance) {
+                    mapInstance.remove();
+                    mapInstance = null;
+                }
+            }
+        }
+
+        // --- Core Functions to Update State (No major change) ---
+        function setState(newState) {
+            state = { ...state, ...newState };
+            render();
+        }
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = e.target.querySelector('#email').value;
+            const password = e.target.querySelector('#password').value;
+            if (email === 'test@aurahealth.com' && password === 'password') {
+                setState({ isLoggedIn: true, loginError: '' });
+            } else {
+                setState({ loginError: 'Login failed. Use: test@aurahealth.com / password' });
+            }
+        }
+        function handleLogout() {
+            setState({ isLoggedIn: false, activeTab: 'map_appointment' });
+        }
+
+
+        // --- MAP FUNCTIONS (Most Robust Implementation) ---
+        function initializeMap() {
+            const mapElement = document.getElementById('map');
+            
+            if (!mapElement) return;
+
+            // **ROBUST VISIBILITY CHECK:** If map element has zero size, it means it's not ready yet.
+            if (mapElement.offsetWidth === 0 || mapElement.offsetHeight === 0) {
+                // Retry in 200ms
+                setTimeout(initializeMap, 200); 
+                return;
+            }
+
+            // Destroy previous map instance if it exists before creating a new one
+            if (mapInstance) {
+                mapInstance.remove();
+                mapInstance = null;
+            }
+
+            // 1. Initialize map at User's location (Bengaluru)
+            mapInstance = L.map('map').setView([USER_LOCATION.lat, USER_LOCATION.lon], 13);
+
+            // 2. Add tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(mapInstance);
+
+            // 3. Define Icon
+            const icon = L.icon({
+                iconUrl: 'https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/images/marker-icon-blue.png',
+                shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+            
+            // 4. Add User Location Marker
+            L.marker([USER_LOCATION.lat, USER_LOCATION.lon], { icon }).addTo(mapInstance)
+            .bindPopup(`<strong>${USER_LOCATION.name}</strong>`).openPopup();
+            
+            // 5. Add Hospital Markers
+            state.nearbyHospitals.forEach(hospital => {
+                const marker = L.marker([hospital.lat, hospital.lon], { icon }).addTo(mapInstance);
+                marker.hospitalId = hospital.id;
+                marker.bindPopup(`<b>${hospital.name}</b><br>${hospital.address}`).on('click', onHospitalMarkerClick);
+            });
+
+            // 6. Add Heatmap Layer
+            const heatData = state.nearbyHospitals.map(h => [h.lat, h.lon, 0.8]);
+            heatData.push([USER_LOCATION.lat, USER_LOCATION.lon, 1.0]); 
+            L.heatLayer(heatData, { radius: 25 }).addTo(mapInstance);
+            
+            // 7. Ensure map renders correctly (Leaflet Trick)
+            mapInstance.invalidateSize();
+        }
+
+        function onHospitalMarkerClick(e) {
+            const hospitalId = e.target.hospitalId;
+            selectHospital(hospitalId);
+        }
+
+        function selectHospital(hospitalId) {
+            const hospital = state.nearbyHospitals.find(h => h.id === hospitalId);
+            if (hospital) {
+                setState({ selectedHospital: hospital, selectedDoctor: null });
+            }
+        }
+
+        function selectDoctor(doctorId) {
+            const doctor = state.selectedHospital.doctors.find(d => d.id === doctorId);
+            if (doctor) {
+                setState({ selectedDoctor: doctor });
+            }
+        }
+
+        // --- Component Definitions (No change in structure) ---
+
+        function Header() {
+            const header = document.createElement('header');
+            header.className = 'app-header';
+            header.innerHTML = `
+                <div class="logo">
+                    <h1>AuraHealth AI</h1>
+                    <p>An intelligent health hub...</p>
+                </div>
+            `;
+            if (state.isLoggedIn) {
+                const logoutButton = document.createElement('button');
+                logoutButton.className = 'logout-button';
+                logoutButton.textContent = 'Logout';
+                logoutButton.addEventListener('click', handleLogout);
+                header.appendChild(logoutButton);
+            }
+            return header;
+        }
+
+        function LoginPage() {
+            const container = document.createElement('div');
+            container.className = 'login-page';
+            container.innerHTML = `
+                <div class="login-box">
+                    <h2>User Login</h2>
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="email">Email:</label>
+                            <input type="email" id="email" required placeholder="test@aurahealth.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password:</label>
+                            <input type="password" id="password" required placeholder="password">
+                        </div>
+                        ${state.loginError ? `<p style="color:red; text-align:center;">${state.loginError}</p>` : ''}
+                        <button type="submit" class="login-button">Log In</button>
+                    </form>
+                </div>
+            `;
+            
+            const form = container.querySelector('#login-form');
+            form.addEventListener('submit', handleLogin);
+            
+            return container;
+        }
+
+        function HospitalMapSection() {
+            const container = document.createElement('div');
+            container.className = 'section-container';
+
+            const selectedHospital = state.selectedHospital;
+            const selectedDoctor = state.selectedDoctor;
+
+            container.innerHTML = `
+                <h3>AI Appointment & Nearby Hospital Finder</h3>
+                <p>Find the nearest hospital, select a doctor, and book your appointment.</p>
+
+                <div class="main-flex-container">
+                    <div class="map-panel">
+                        <div id="map"></div>
+                    </div>
+                    
+                    <div class="hospital-doctor-panel">
+                        <div class="hospital-list">
+                            <h4>Nearby Hospitals</h4>
+                            ${state.nearbyHospitals.map(h => `
+                                <div class="hospital-item ${selectedHospital && selectedHospital.id === h.id ? 'selected' : ''}" data-hospital-id="${h.id}">
+                                    <strong>${h.name}</strong>
+                                    <p>${h.address}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="doctor-list">
+                            <h4>Doctors at ${selectedHospital ? selectedHospital.name : 'Selected Hospital'}</h4>
+                            ${selectedHospital ? selectedHospital.doctors.map(d => `
+                                <div class="doctor-item ${selectedDoctor && selectedDoctor.id === d.id ? 'selected' : ''}" data-doctor-id="${d.id}">
+                                    <strong>${d.name}</strong>
+                                    <span class="specialty-tag">${d.specialty}</span>
+                                </div>
+                            `).join('') : '<p>Select a hospital to see doctors.</p>'}
+                        </div>
+                    </div>
+
+                    <div class="doctor-schedule-panel">
+                        <h4>Doctor Schedule & Booking</h4>
+                        ${selectedDoctor ? `
+                            <h5>${selectedDoctor.name} - ${selectedDoctor.specialty}</h5>
+                            ${Object.entries(selectedDoctor.schedule).map(([day, times]) => `
+                                <div class="schedule-day">
+                                    <strong>${day}:</strong> 
+                                    <div class="time-slots">
+                                        ${times.map(time => `
+                                            <button class="time-slot-button" data-day="${day}" data-time="${time}" data-doctor-id="${selectedDoctor.id}">
+                                                ${time}
+                                            </button>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        ` : '<p>Select a doctor to view their availability and book an appointment.</p>'}
+                    </div>
+                </div>
+            `;
+
+            // Event Listeners for Hospital List
+            container.querySelectorAll('.hospital-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.getAttribute('data-hospital-id'));
+                    selectHospital(id);
+                });
+            });
+
+            // Event Listeners for Doctor List
+            container.querySelectorAll('.doctor-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.getAttribute('data-doctor-id'));
+                    selectDoctor(id);
+                });
+            });
+
+            // Event Listeners for Time Slot Booking
+            container.querySelectorAll('.time-slot-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const day = e.currentTarget.getAttribute('data-day');
+                    const time = e.currentTarget.getAttribute('data-time');
+                    setState({ 
+                        isConfirming: true, 
+                        bookingDetails: { 
+                            doctor: state.selectedDoctor, 
+                            day: day, 
+                            time: time, 
+                            hospital: state.selectedHospital,
+                            name: '', 
+                            phone: '' 
+                        } 
+                    });
+                });
+            });
+
+            return container;
+        }
+
+        function PrescriptionSection() {
+            const container = document.createElement('div');
+            container.className = 'section-container';
+
+            const adherencePlan = state.medications.map(med => `
+                <div class="medication-entry">
+                    <strong>${med.name} (${med.dosage})</strong>
+                    <p>Frequency: ${med.frequency}</p>
+                    <p>Duration: ${med.duration}</p>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <h3>Smart Prescription Management</h3>
+                <p>Track your daily progress and get AI-powered reminders to stay on track.</p>
+                
+                <div class="flex-container">
+                    <div style="flex:1;">
+                        <h4>Your Medications</h4>
+                        <div style="border:1px solid #ccc; padding:15px; border-radius:6px;">
+                            ${adherencePlan || '<p>No medications added yet.</p>'}
+                            <button style="margin-top:10px; background-color:#17a2b8;">Add Prescription (Demo)</button>
+                        </div>
+                    </div>
+                    
+                    <div style="flex:1;">
+                        <h4>AI Adherence Plan</h4>
+                        <div class="adherence-plan">
+                            <button style="float:right; background-color:#6f42c1;">Create Personalized Plan</button>
+                            <p><strong>Lisinopril (10mg):</strong> "Your Motivational Quote: 'A steady heart starts with a steady hand. Great job taking this!'"</p>
+                            <p><strong>Cetrizine (500):</strong> "Every pill is a step towards a healthier you. You're doing great!"</p>
+                            <p style="margin-top:15px; padding-top:10px; border-top:1px dashed #007bff;">**Overall Tip:** Timing your medication with a meal can improve absorption.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return container;
+        }
+
+        function ReportAnalyzerSection() {
+            const container = document.createElement('div');
+            container.className = 'section-container';
+
+            const analyzeReport = (text) => {
+                let result = '';
+                if (text) {
+                    result = `
+                        <strong>Key Findings:</strong>
+                        <p>The AI identified signs of **mild osteoarthritis** in the left knee, matching the initial description. No signs of **acute fracture** were found. This suggests a chronic condition. **(This is a demo analysis)**</p>
+                        <strong>Diagnosis:</strong>
+                        <p>Based on the text: **Mild Osteoarthritis of the Left Knee.**</p>
+                        <strong>Medications/Procedures:</strong>
+                        <p>Follow-up with **orthopedic specialist** is recommended.</p>
+                    `;
+                } else {
+                    result = '<p>Please enter a report or upload an image to analyze.</p>';
+                }
+                setState({ analysisResult: result });
+            };
+
+
+            container.innerHTML = `
+                <h3>AI Medical Report Analyzer</h3>
+                <p>Paste text or upload an image of a medical document to get an AI-powered summary.</p>
+                <div class="analyzer-flex">
+                    <div style="flex:1;">
+                        <h4>Input</h4>
+                        <textarea id="report-input" rows="15" placeholder="Paste medical report text here...">${state.reportText}</textarea>
+                        <p style="margin-top:10px;">Or Upload a Report Image (Future feature)</p>
+                    </div>
+                    <div style="flex:1;">
+                        <h4>Analysis</h4>
+                        <div class="analysis-result">
+                            ${state.analysisResult || '<p>Click "Analyze Report" to get the summary.</p>'}
+                        </div>
+                        <button id="analyze-button" style="width:100%; margin-top:10px;">Analyze Report</button>
+                        <!-- Chatbot UI inside analyzer section -->
+                        <div id="chatbot-container" style="margin-top:30px;width:100%;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                          <div style="background:#0078d7;color:#fff;padding:10px;border-top-left-radius:10px;border-top-right-radius:10px;font-weight:bold;">AI Medical Chatbot</div>
+                          <div id="chatbot-messages" style="height:180px;overflow-y:auto;padding:10px;font-size:14px;"></div>
+                          <form id="chatbot-form" style="display:flex;border-top:1px solid #eee;">
+                            <input type="text" id="chatbot-input" placeholder="Ask about your medical report..." style="flex:1;padding:10px;border:none;border-bottom-left-radius:10px;outline:none;">
+                            <button type="submit" style="background:#0078d7;color:#fff;border:none;padding:0 20px;border-bottom-right-radius:10px;cursor:pointer;">Send</button>
+                          </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.querySelector('#report-input').addEventListener('input', (e) => setState({ reportText: e.target.value }));
+            container.querySelector('#analyze-button').addEventListener('click', () => analyzeReport(state.reportText));
+
+            // Chatbot logic
+            const messagesDiv = container.querySelector('#chatbot-messages');
+            const form = container.querySelector('#chatbot-form');
+            const input = container.querySelector('#chatbot-input');
+
+            function addMessage(text, sender) {
+                const msg = document.createElement('div');
+                msg.style.margin = '8px 0';
+                msg.style.textAlign = sender === 'user' ? 'right' : 'left';
+                msg.innerHTML = `<span style='background:${sender==='user'?'#e6f7ff':'#f4f4f4'};padding:8px 12px;border-radius:8px;display:inline-block;'>${text}</span>`;
+                messagesDiv.appendChild(msg);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+
+            function mockAIResponse(userText) {
+                // Simple mock response logic
+                if (userText.toLowerCase().includes('blood')) {
+                    return "Your blood report looks normal. If you have specific concerns, please specify.";
+                } else if (userText.toLowerCase().includes('x-ray')) {
+                    return "The X-ray analysis shows no abnormalities detected.";
+                } else {
+                    return "I'm here to help analyze your medical report. Please provide details or upload your report.";
+                }
+            }
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const userText = input.value.trim();
+                if (!userText) return;
+                addMessage(userText, 'user');
+                input.value = '';
+                setTimeout(() => {
+                    const aiText = mockAIResponse(userText);
+                    addMessage(aiText, 'ai');
+                }, 600);
+            });
+
+            if (!state.analysisResult) analyzeReport(state.reportText);
+
+            return container;
+        }
+
+        function ConfirmationModal() {
+            const { doctor, day, time, hospital } = state.bookingDetails;
+            
+            const handleConfirm = (e) => {
+                e.preventDefault();
+                const newName = document.getElementById('modal-name').value;
+                const newPhone = document.getElementById('modal-phone').value;
+
+                if (newName && newPhone) {
+                    alert(`Appointment Confirmed for ${newName} with ${doctor.name} (${doctor.specialty}) at ${hospital.name} on ${day} at ${time}. Your Token is #307764.`);
+                    setState({ 
+                        isConfirming: false, 
+                        bookingDetails: { doctor: null, day: '', time: '', hospital: null, name: '', phone: '' },
+                        selectedDoctor: null 
+                    });
+                } else {
+                    alert("Please enter your full name and phone number.");
+                }
+            };
+
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = `
+                <div class="confirm-modal">
+                    <h4>Confirm Your Appointment</h4>
+                    <p>You are booking with <strong>${doctor.name}</strong> (${doctor.specialty}) at <strong>${hospital.name}</strong> on <strong>${day}</strong> at <strong>${time}</strong>.</p>
+                    
+                    <form id="confirm-form">
+                        <div class="form-group">
+                            <label for="modal-name">Full Name:</label>
+                            <input type="text" id="modal-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="modal-phone">Phone Number:</label>
+                            <input type="tel" id="modal-phone" required>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="cancel-button">Cancel</button>
+                            <button type="submit" class="confirm-button" style="background-color:#28a745;">Confirm Booking</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            
+            overlay.querySelector('#confirm-form').addEventListener('submit', handleConfirm);
+            overlay.querySelector('.cancel-button').addEventListener('click', () => setState({ isConfirming: false }));
+
+            return overlay;
+        }
+
+        function Dashboard() {
+            const container = document.createElement('div');
+            container.className = 'full-dashboard';
+
+            // Always show the map of nearby hospitals at the top after login
+            const mapContainer = document.createElement('div');
+            mapContainer.className = 'section-container';
+            mapContainer.innerHTML = `
+                <h3>Nearby Hospitals Map</h3>
+                <div class="map-panel" style="max-width:600px;margin:auto;height:400px;">
+                    <div id="main-dashboard-map" style="height:100%;min-height:350px;"></div>
+                </div>
+            `;
+            container.appendChild(mapContainer);
+
+            // Initialize the main dashboard map after DOM is ready
+            setTimeout(() => {
+                if (window.L && document.getElementById('main-dashboard-map')) {
+                    // Remove previous instance if exists
+                    if (window.mainDashboardMapInstance) {
+                        window.mainDashboardMapInstance.remove();
+                        window.mainDashboardMapInstance = null;
+                    }
+                    window.mainDashboardMapInstance = L.map('main-dashboard-map').setView([USER_LOCATION.lat, USER_LOCATION.lon], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors',
+                        maxZoom: 19
+                    }).addTo(window.mainDashboardMapInstance);
+                    const icon = L.icon({
+                        iconUrl: 'https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/images/marker-icon-blue.png',
+                        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    });
+                    L.marker([USER_LOCATION.lat, USER_LOCATION.lon], { icon }).addTo(window.mainDashboardMapInstance)
+                        .bindPopup(`<strong>${USER_LOCATION.name}</strong>`).openPopup();
+                    state.nearbyHospitals.forEach(hospital => {
+                        const marker = L.marker([hospital.lat, hospital.lon], { icon }).addTo(window.mainDashboardMapInstance);
+                        marker.bindPopup(`<b>${hospital.name}</b><br>${hospital.address}`);
+                    });
+                    window.mainDashboardMapInstance.invalidateSize();
+                }
+            }, 400);
+
+            const tabNav = document.createElement('div');
+            tabNav.className = 'tab-navigation';
+            const tabs = [
+                { id: 'map_appointment', label: 'Nearby Hospitals & Appointment' },
+                { id: 'prescription', label: 'Smart Prescription Management' },
+                { id: 'analyzer', label: 'AI Medical Report Analyzer' }
+            ];
+
+            tabs.forEach(tab => {
+                const button = document.createElement('button');
+                button.textContent = tab.label;
+                if (state.activeTab === tab.id) {
+                    button.classList.add('active-tab');
+                }
+                button.addEventListener('click', () => setState({ activeTab: tab.id }));
+                tabNav.appendChild(button);
+            });
+            container.appendChild(tabNav);
+
+            const tabContent = document.createElement('div');
+            tabContent.className = 'tab-content';
+
+            if (state.activeTab === 'map_appointment') tabContent.appendChild(HospitalMapSection());
+            else if (state.activeTab === 'prescription') tabContent.appendChild(PrescriptionSection());
+            else if (state.activeTab === 'analyzer') tabContent.appendChild(ReportAnalyzerSection());
+
+            container.appendChild(tabContent);
+
+            if (state.isConfirming) container.appendChild(ConfirmationModal());
+
+            return container;
+        }
+
+        function App() {
+            const app = document.createElement('div');
+            app.className = 'App';
+            app.appendChild(Header());
+            
+            const mainContent = document.createElement('div');
+            mainContent.className = 'main-content';
+
+            if (state.isLoggedIn) {
+                mainContent.appendChild(Dashboard());
+            } else {
+                mainContent.appendChild(LoginPage());
+            }
+            
+            app.appendChild(mainContent);
+            return app;
+        }
+
+        // Initial render
+        document.addEventListener('DOMContentLoaded', render);
+
+    </script>
+</body>
+        <!-- ...existing code... -->
