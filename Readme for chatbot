@@ -1,0 +1,81 @@
+# 🤖 Health Assistant Chatbot (WhatsApp & SMS)
+
+An AI-powered healthcare chatbot designed to provide instant medical guidance through **WhatsApp and SMS**, making healthcare assistance accessible even without internet-based applications.
+
+---
+
+## 🚀 Overview
+
+This chatbot allows users to describe their symptoms and receive guidance on:
+
+* Possible health conditions
+* Immediate actions to take
+* Safety precautions
+
+---
+
+## 💡 Features
+
+### 📱 Multi-Platform Support
+
+* WhatsApp integration
+* SMS support for low-internet users
+
+---
+
+### 🧠 AI-Based Health Guidance
+
+* Understands user input using NLP
+* Provides smart and relevant responses
+* Suggests precautions and next steps
+
+---
+
+### ⚡ Fast & Accessible
+
+* No need to install apps
+* Works directly through messaging
+
+---
+
+## 🛠️ Tech Stack
+
+### ⚙️ Backend
+
+* Node.js / Express.js
+
+### 🤖 AI / NLP
+
+* Natural Language Processing (NLP)
+* Machine Learning models
+
+### 📡 Communication APIs
+
+* WhatsApp Business API (or Twilio API)
+* SMS Gateway (Twilio / Fast2SMS)
+
+### 🔥 Database
+
+* Firebase / Firestore
+
+### ☁️ Deployment
+
+* Cloud Functions / Firebase Hosting / Server Deployment
+
+---
+
+## 🎯 Purpose
+
+To provide quick, reliable, and accessible healthcare assistance anytime, anywhere.
+
+---
+
+## ⚠️ Disclaimer
+
+This chatbot provides general guidance and should not replace professional medical advice.
+
+---
+
+## ⭐ Support
+
+If you like this project, give it a star!
